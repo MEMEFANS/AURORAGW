@@ -1,0 +1,15 @@
+{
+  "name": "AURORA 极光",
+  "short_name": "AURORA",
+  "description": "Web4 AI 智能预测金融操作系统",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#0c0a09",
+  "background_color": "#0c0a09",
+  "display": "standalone"
+}

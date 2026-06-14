@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Microsoft YaHei", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply overflow-x-hidden text-stone-100;
+  margin: 0;
+  background: #070605;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.bg-aurora {
+  background:
+    radial-gradient(circle at 16% 12%, rgba(250, 204, 21, 0.23), transparent 26rem),
+    radial-gradient(circle at 82% 5%, rgba(20, 184, 166, 0.14), transparent 26rem),
+    radial-gradient(circle at 55% 48%, rgba(180, 83, 9, 0.15), transparent 34rem),
+    linear-gradient(135deg, #070605 0%, #15100a 42%, #080706 100%);
+}
+
+.gold-gradient {
+  background: linear-gradient(95deg, #9b6b1b 0%, #f8e7a2 28%, #d7a638 52%, #fff5bf 72%, #a96811 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-shine {
+  @apply pointer-events-none absolute left-1/2 top-16 h-[28rem] w-[72rem] -translate-x-1/2 rounded-full blur-3xl;
+  background: linear-gradient(90deg, rgba(250, 204, 21, 0.22), rgba(20, 184, 166, 0.08), rgba(180, 83, 9, 0.18));
+}
+
+.nav-link {
+  @apply transition-colors hover:text-amber-200;
+}
+
+.gold-button {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-black text-black transition duration-200;
+  background: linear-gradient(105deg, #94620f, #f9e69a 32%, #d4a33a 58%, #fff2ad 78%, #9a620f);
+  box-shadow: 0 14px 34px rgba(217, 119, 6, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.48);
+}
+
+.gold-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.gold-button-lg {
+  @apply px-7 py-4 text-base;
+}
+
+.ghost-button {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-amber-200/20 bg-stone-950/45 px-7 py-4 font-bold text-amber-100 transition duration-200 hover:border-amber-200/40 hover:bg-amber-200/10;
+}
+
+.terminal-card,
+.feature-card,
+.signal-card,
+.notice-panel,
+.admin-panel,
+.video-card {
+  @apply rounded-lg border border-amber-200/10 bg-stone-950/55 shadow-2xl backdrop-blur-xl;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 236, 179, 0.08);
+}
+
+.terminal-card {
+  @apply relative overflow-hidden p-6 md:p-8;
+}
+
+.terminal-card::before {
+  content: "";
+  @apply absolute inset-x-0 top-0 h-px;
+  background: linear-gradient(90deg, transparent, rgba(250, 204, 21, 0.75), transparent);
+}
+
+.metric-tile {
+  @apply rounded-lg border border-amber-200/10 bg-black/25 p-4;
+}
+
+.chart-bar {
+  @apply flex-1 rounded-t bg-gradient-to-t from-amber-700 via-amber-300 to-yellow-100;
+  min-height: 22%;
+  box-shadow: 0 0 24px rgba(250, 204, 21, 0.18);
+}
+
+.section-band {
+  @apply border-y border-amber-200/10 bg-black/20 py-24;
+}
+
+.section-eyebrow {
+  @apply inline-flex rounded-full border border-amber-200/20 bg-amber-200/10 px-4 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-amber-200;
+}
+
+.feature-card,
+.signal-card,
+.notice-panel,
+.admin-panel {
+  @apply p-6;
+}
+
+.feature-card,
+.signal-card,
+.resource-card,
+.video-card {
+  @apply transition duration-200;
+}
+
+.feature-card:hover,
+.signal-card:hover,
+.resource-card:hover,
+.video-card:hover {
+  transform: translateY(-3px);
+  @apply border-amber-200/30;
+}
+
+.feature-icon {
+  @apply grid h-12 w-12 place-items-center rounded-lg bg-amber-200/10 text-amber-300;
+}
+
+.signal-card {
+  @apply min-h-44;
+}
+
+.resource-card {
+  @apply flex min-h-24 items-center gap-4 rounded-lg border border-amber-200/10 bg-stone-950/55 p-5 backdrop-blur-xl;
+}
+
+.video-card {
+  @apply overflow-hidden p-4;
+}
+
+.video-cover {
+  @apply relative aspect-video overflow-hidden rounded-lg border border-amber-200/10 bg-stone-900;
+}
+
+.admin-title {
+  @apply mb-5 flex items-center gap-2 text-lg font-black text-stone-50;
+}
+
+.field-label {
+  @apply mb-2 mt-4 block text-sm font-bold text-amber-100/85;
+}
+
+.admin-input {
+  @apply w-full rounded-lg border border-amber-200/15 bg-black/30 px-3 py-2.5 text-sm text-stone-100 outline-none transition placeholder:text-stone-500;
+}
+
+.admin-input:focus {
+  @apply border-amber-300/60 ring-2 ring-amber-300/15;
+}
+
+.small-icon-button {
+  @apply grid h-9 w-9 place-items-center rounded-lg border border-amber-200/15 bg-amber-200/10 text-amber-100 transition hover:bg-amber-200/20;
+}
+
+@media (max-width: 640px) {
+  .gold-button,
+  .ghost-button {
+    @apply w-full;
+  }
+
+  .section-band {
+    @apply py-16;
+  }
+}

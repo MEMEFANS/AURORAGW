@@ -1,0 +1,100 @@
+{
+  "heroTitle": "AI 预见趋势",
+  "heroHighlight": "让收益自主生长",
+  "heroText": "AURORA 极光是一套面向 Web4 的 AI 智能预测金融操作系统，融合趋势预判、资产策略、节点共建与生态治理，帮助用户更早看见机会，更稳参与增长。",
+  "ctaText": "进入生态",
+  "announcement": "Web4 AI 智能预测金融操作系统，正在开放生态共建席位。",
+  "metrics": [
+    {
+      "label": "生态参与者",
+      "value": "128,600+",
+      "trend": "+18.4%"
+    },
+    {
+      "label": "AI 策略胜率",
+      "value": "82.7%",
+      "trend": "+6.2%"
+    },
+    {
+      "label": "节点覆盖地区",
+      "value": "36",
+      "trend": "+9"
+    }
+  ],
+  "resources": [
+    {
+      "title": "AURORA 2026 白皮书",
+      "type": "PDF",
+      "size": "4.2 MB",
+      "url": "/resources/aurora-2026-whitepaper.pdf"
+    },
+    {
+      "title": "AI 预测模型说明",
+      "type": "PDF",
+      "size": "2.8 MB",
+      "url": "/resources/ai-model-brief.pdf"
+    },
+    {
+      "title": "节点收益与释放明细",
+      "type": "CSV",
+      "size": "1.4 MB",
+      "url": "/resources/node-release-details.csv"
+    },
+    {
+      "title": "新资料标题",
+      "type": "PDF",
+      "size": "1.0 MB",
+      "url": ""
+    }
+  ],
+  "videos": [
+    {
+      "url": "",
+      "title": "3 分钟了解 AURORA 核心机制",
+      "author": "Aurora Official",
+      "views": "12K"
+    },
+    {
+      "url": "",
+      "title": "如何配置你的 AI 智能代理",
+      "author": "生态学院",
+      "views": "8.5K"
+    },
+    {
+      "url": "",
+      "title": "Web4 趋势预测实战演示",
+      "author": "Finance Today",
+      "views": "15K"
+    },
+    {
+      "url": "",
+      "title": "新视频标题",
+      "author": "Aurora Team",
+      "views": "0"
+    },
+    {
+      "title": "新视频标题",
+      "author": "Aurora Team",
+      "views": "0",
+      "url": ""
+    },
+    {
+      "title": "新视频标题",
+      "author": "Aurora Team",
+      "views": "0",
+      "url": ""
+    }
+  ],
+  "notices": [
+    {
+      "title": "节点共建计划开放",
+      "content": "第一期节点席位已开放申请，优先面向早期生态贡献者。",
+      "status": "已发布"
+    },
+    {
+      "title": "白皮书 v2.0 更新",
+      "content": "新增 AI 策略风控、RWA 资产映射与治理模块说明。",
+      "status": "草稿"
+    }
+  ]
+}

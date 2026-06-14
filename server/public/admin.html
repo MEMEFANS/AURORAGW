@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AURORA 极光后台管理</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: #f8fafc;
+        font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
+        background:
+          radial-gradient(circle at 15% 8%, rgba(250, 204, 21, 0.2), transparent 28rem),
+          radial-gradient(circle at 86% 4%, rgba(20, 184, 166, 0.12), transparent 24rem),
+          linear-gradient(135deg, #070605, #17110a 48%, #080706);
+      }
+      button, input, textarea, select { font: inherit; }
+      .shell { width: min(1200px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 64px; }
+      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 0 30px; }
+      .brand { display: flex; align-items: center; gap: 12px; }
+      .logo {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border-radius: 10px;
+        color: #111827;
+        font-weight: 900;
+        background: linear-gradient(105deg, #94620f, #f9e69a 32%, #d4a33a 58%, #fff2ad 78%, #9a620f);
+        box-shadow: 0 0 30px rgba(250, 204, 21, 0.28);
+      }
+      h1, h2, p { margin: 0; }
+      .muted { color: #a8a29e; }
+      .login, .panel, .card {
+        border: 1px solid rgba(253, 230, 138, 0.12);
+        border-radius: 10px;
+        background: rgba(12, 10, 9, 0.64);
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 236, 179, 0.08);
+        backdrop-filter: blur(18px);
+      }
+      .login { display: grid; max-width: 520px; margin: 80px auto 0; gap: 16px; padding: 28px; }
+      .panel { padding: 22px; }
+      .grid { display: grid; grid-template-columns: 0.92fr 1.08fr; gap: 20px; }
+      .stack, .list, .card { display: grid; gap: 14px; }
+      .card { padding: 16px; }
+      .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+      label { display: block; margin: 14px 0 8px; color: rgba(254, 243, 199, 0.88); font-size: 13px; font-weight: 800; }
+      input, textarea, select {
+        width: 100%;
+        border: 1px solid rgba(253, 230, 138, 0.16);
+        border-radius: 8px;
+        outline: none;
+        color: #f8fafc;
+        background: rgba(0, 0, 0, 0.28);
+        padding: 11px 12px;
+      }
+      input[type="file"] { color: #d6d3d1; }
+      textarea { min-height: 110px; resize: vertical; }
+      input:focus, textarea:focus, select:focus { border-color: rgba(252, 211, 77, 0.72); box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.12); }
+      .button-row { display: flex; flex-wrap: wrap; gap: 10px; }
+      button { cursor: pointer; border: 0; border-radius: 8px; padding: 11px 16px; font-weight: 900; }
+      .gold { color: #111827; background: linear-gradient(105deg, #94620f, #f9e69a 32%, #d4a33a 58%, #fff2ad 78%, #9a620f); box-shadow: 0 14px 34px rgba(217, 119, 6, 0.24); }
+      .ghost { color: #fde68a; border: 1px solid rgba(253, 230, 138, 0.18); background: rgba(253, 230, 138, 0.08); }
+      .danger { color: #fecaca; border: 1px solid rgba(248, 113, 113, 0.24); background: rgba(127, 29, 29, 0.32); }
+      .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .status { min-height: 24px; margin-top: 12px; color: #86efac; font-size: 14px; }
+      .hint { color: #a8a29e; font-size: 13px; line-height: 1.7; }
+      .video-url { word-break: break-all; color: #fde68a; font-size: 13px; }
+      .hidden { display: none; }
+      @media (max-width: 900px) {
+        .topbar, .grid, .two { grid-template-columns: 1fr; }
+        .topbar { align-items: flex-start; flex-direction: column; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <div class="topbar">
+        <div class="brand">
+          <div class="logo">A</div>
+          <div>
+            <h1>AURORA 极光后台管理</h1>
+            <p class="muted">独立服务端后台，不打包进公开前台。</p>
+          </div>
+        </div>
+        <div class="button-row hidden" id="actions">
+          <button class="ghost" id="reloadBtn">重新加载</button>
+          <button class="gold" id="saveBtn">保存到服务器</button>
+        </div>
+      </div>
+
+      <section class="login" id="login">
+        <h2>管理员登录</h2>
+        <p class="muted">请输入服务器配置的 ADMIN_TOKEN。</p>
+        <input id="tokenInput" type="password" placeholder="后台密钥" />
+        <button class="gold" id="loginBtn">进入后台</button>
+        <div class="status" id="loginStatus"></div>
+      </section>
+
+      <section class="grid hidden" id="editor">
+        <div class="stack">
+          <div class="panel">
+            <div class="section-head"><h2>首页内容</h2></div>
+            <label>主标题</label>
+            <input id="heroTitle" />
+            <label>鎏金标题</label>
+            <input id="heroHighlight" />
+            <label>介绍文案</label>
+            <textarea id="heroText"></textarea>
+            <label>按钮文字</label>
+            <input id="ctaText" />
+            <label>顶部公告</label>
+            <input id="announcement" />
+          </div>
+
+          <div class="panel">
+            <div class="section-head"><h2>运营指标</h2></div>
+            <div class="list" id="metrics"></div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="panel">
+            <div class="section-head">
+              <h2>资料管理</h2>
+              <button class="ghost" data-add="resources">新增资料</button>
+            </div>
+            <div class="list" id="resources"></div>
+          </div>
+
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h2>视频管理</h2>
+                <p class="hint">支持上传 mp4、webm、mov、m4v。上传后记得点击“保存到服务器”。</p>
+              </div>
+              <button class="ghost" data-add="videos">新增视频</button>
+            </div>
+            <div class="list" id="videos"></div>
+          </div>
+
+          <div class="panel">
+            <div class="section-head">
+              <h2>公告管理</h2>
+              <button class="ghost" data-add="notices">新增公告</button>
+            </div>
+            <div class="list" id="notices"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="status" id="status"></div>
+    </main>
+
+    <script>
+      const state = {
+        token: localStorage.getItem("aurora-admin-token") || "",
+        data: null,
+      };
+
+      const $ = (id) => document.getElementById(id);
+
+      const request = async (path, options = {}) => {
+        const response = await fetch(path, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${state.token}`,
+            ...(options.headers || {}),
+          },
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message || "请求失败");
+        return payload;
+      };
+
+      const uploadFile = async (file) => {
+        const response = await fetch(`/api/admin/upload?filename=${encodeURIComponent(file.name)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+            Authorization: `Bearer ${state.token}`,
+          },
+          body: file,
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message || "上传失败");
+        return payload.url;
+      };
+
+      const bindField = (id, key) => {
+        const input = $(id);
+        input.value = state.data[key] || "";
+        input.oninput = () => {
+          state.data[key] = input.value;
+        };
+      };
+
+      const createInput = (value, oninput, placeholder = "") => {
+        const input = document.createElement("input");
+        input.value = value || "";
+        input.placeholder = placeholder;
+        input.oninput = () => oninput(input.value);
+        return input;
+      };
+
+      const render = () => {
+        bindField("heroTitle", "heroTitle");
+        bindField("heroHighlight", "heroHighlight");
+        bindField("heroText", "heroText");
+        bindField("ctaText", "ctaText");
+        bindField("announcement", "announcement");
+        renderMetrics();
+        renderResources();
+        renderVideos();
+        renderNotices();
+      };
+
+      const renderMetrics = () => {
+        const root = $("metrics");
+        root.innerHTML = "";
+        state.data.metrics.forEach((metric) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.append(
+            createInput(metric.label, (value) => (metric.label = value), "指标名称"),
+            createInput(metric.value, (value) => (metric.value = value), "指标数值"),
+            createInput(metric.trend, (value) => (metric.trend = value), "变化趋势"),
+          );
+          root.append(card);
+        });
+      };
+
+      const renderResources = () => {
+        const root = $("resources");
+        root.innerHTML = "";
+        state.data.resources.forEach((resource, index) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          const row = document.createElement("div");
+          row.className = "two";
+          row.append(
+            createInput(resource.type, (value) => (resource.type = value), "类型"),
+            createInput(resource.size, (value) => (resource.size = value), "大小"),
+          );
+          card.append(
+            createInput(resource.title, (value) => (resource.title = value), "资料标题"),
+            row,
+            createInput(resource.url || "", (value) => (resource.url = value), "资料链接 / 上传地址"),
+            removeButton("resources", index),
+          );
+          root.append(card);
+        });
+      };
+
+      const renderVideos = () => {
+        const root = $("videos");
+        root.innerHTML = "";
+        state.data.videos.forEach((video, index) => {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const metaRow = document.createElement("div");
+          metaRow.className = "two";
+          metaRow.append(
+            createInput(video.author, (value) => (video.author = value), "作者/来源"),
+            createInput(video.views, (value) => (video.views = value), "播放量"),
+          );
+
+          const urlInput = createInput(video.url, (value) => (video.url = value), "视频地址，可粘贴外部链接或上传后自动生成");
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept = "video/mp4,video/webm,video/quicktime,video/x-m4v";
+
+          const uploadBtn = document.createElement("button");
+          uploadBtn.className = "ghost";
+          uploadBtn.textContent = "上传视频";
+          uploadBtn.onclick = async () => {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {
+              $("status").textContent = "请先选择一个视频文件。";
+              return;
+            }
+            $("status").textContent = `正在上传：${file.name}`;
+            try {
+              video.url = await uploadFile(file);
+              urlInput.value = video.url;
+              $("status").textContent = "视频已上传，请点击“保存到服务器”。";
+            } catch (error) {
+              $("status").textContent = error.message;
+            }
+          };
+
+          const currentUrl = document.createElement("div");
+          currentUrl.className = "video-url";
+          currentUrl.textContent = video.url ? `当前视频：${video.url}` : "当前未上传视频";
+
+          card.append(
+            createInput(video.title, (value) => (video.title = value), "视频标题"),
+            metaRow,
+            urlInput,
+            fileInput,
+            uploadBtn,
+            currentUrl,
+            removeButton("videos", index),
+          );
+          root.append(card);
+        });
+      };
+
+      const renderNotices = () => {
+        const root = $("notices");
+        root.innerHTML = "";
+        state.data.notices.forEach((notice, index) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          const content = document.createElement("textarea");
+          content.value = notice.content || "";
+          content.placeholder = "公告内容";
+          content.oninput = () => (notice.content = content.value);
+          const select = document.createElement("select");
+          select.innerHTML = "<option>已发布</option><option>草稿</option>";
+          select.value = notice.status || "草稿";
+          select.onchange = () => (notice.status = select.value);
+          card.append(createInput(notice.title, (value) => (notice.title = value), "公告标题"), content, select, removeButton("notices", index));
+          root.append(card);
+        });
+      };
+
+      const removeButton = (key, index) => {
+        const button = document.createElement("button");
+        button.className = "danger";
+        button.textContent = "删除";
+        button.onclick = () => {
+          state.data[key].splice(index, 1);
+          render();
+        };
+        return button;
+      };
+
+      const loadData = async () => {
+        $("status").textContent = "正在加载服务器数据...";
+        state.data = await request("/api/admin/site");
+        state.data.videos = (state.data.videos || []).map((video) => ({ url: "", ...video }));
+        $("login").classList.add("hidden");
+        $("editor").classList.remove("hidden");
+        $("actions").classList.remove("hidden");
+        render();
+        $("status").textContent = "数据已加载";
+      };
+
+      $("loginBtn").onclick = async () => {
+        state.token = $("tokenInput").value.trim();
+        localStorage.setItem("aurora-admin-token", state.token);
+        try {
+          await loadData();
+          $("loginStatus").textContent = "";
+        } catch (error) {
+          $("loginStatus").textContent = error.message;
+        }
+      };
+
+      $("reloadBtn").onclick = () => loadData().catch((error) => ($("status").textContent = error.message));
+
+      $("saveBtn").onclick = async () => {
+        $("status").textContent = "正在保存...";
+        try {
+          await request("/api/admin/site", {
+            method: "POST",
+            body: JSON.stringify(state.data),
+          });
+          $("status").textContent = `已保存 ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+        } catch (error) {
+          $("status").textContent = error.message;
+        }
+      };
+
+      document.querySelectorAll("[data-add]").forEach((button) => {
+        button.onclick = () => {
+          const key = button.dataset.add;
+          const templates = {
+            resources: { title: "新资料标题", type: "PDF", size: "1.0 MB", url: "" },
+            videos: { title: "新视频标题", author: "Aurora Team", views: "0", url: "" },
+            notices: { title: "新公告", content: "填写公告内容", status: "草稿" },
+          };
+          state.data[key].push({ ...templates[key] });
+          render();
+        };
+      });
+
+      if (state.token) {
+        $("tokenInput").value = state.token;
+      }
+    </script>
+  </body>
+</html>
