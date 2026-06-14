@@ -64,7 +64,7 @@
       .ghost { color: #fde68a; border: 1px solid rgba(253, 230, 138, 0.18); background: rgba(253, 230, 138, 0.08); }
       .danger { color: #fecaca; border: 1px solid rgba(248, 113, 113, 0.24); background: rgba(127, 29, 29, 0.32); }
       .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .status { min-height: 24px; margin-top: 12px; color: #86efac; font-size: 14px; }
+      .status { min-height: 24px; margin-top: 12px; color: #86efac; font-size: 14px; font-weight: 600; text-align: right; }
       .hint { color: #a8a29e; font-size: 13px; line-height: 1.7; }
       .video-url { word-break: break-all; color: #fde68a; font-size: 13px; }
       .hidden { display: none; }
@@ -122,6 +122,7 @@
         <div class="button-row hidden" id="actions">
           <button class="ghost" id="reloadBtn">重新加载</button>
           <button class="gold" id="saveBtn">保存到服务器</button>
+          <div class="status" id="status" style="margin: 0; min-width: 200px;"></div>
         </div>
       </div>
 
@@ -202,8 +203,6 @@
           </div>
         </div>
       </section>
-
-      <div class="status" id="status"></div>
     </main>
 
     <script>
