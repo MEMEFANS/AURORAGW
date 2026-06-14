@@ -520,7 +520,6 @@ const App = () => {
       <footer className="border-t border-amber-200/10 bg-black/40 px-4 py-10 text-sm text-stone-400 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 md:flex-row md:items-center">
           <span>© 2026 AURORA 极光 Foundation. All rights reserved.</span>
-          <span>鎏金视觉 · 前台展示 · 服务端后台</span>
         </div>
       </footer>
     </div>
