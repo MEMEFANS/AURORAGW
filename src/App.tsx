@@ -87,7 +87,7 @@ const defaultData: SiteData = {
   ],
 };
 
-const apiBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8787';
+const apiBase = import.meta.env.VITE_API_BASE ?? '';
 
 const resolveMediaUrl = (url?: string) => {
   if (!url) {
