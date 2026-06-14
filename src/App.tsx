@@ -452,6 +452,8 @@ const App = () => {
                   src={playingVideo.url}
                   controls
                   autoPlay
+                  playsInline
+                  preload="metadata"
                   className="w-full h-full"
                 />
               </div>
