@@ -311,8 +311,8 @@ const App = () => {
         <section id="advantages" className="section-band">
           <SectionTitle
             eyebrow="Core Modules"
-            title="面向运营增长的前台结构"
-            desc="品牌展示、数据指标、资料下载、视频内容和公告发布都由服务端后台统一维护，前台只负责展示。"
+            title="智能金融生态系统"
+            desc="融合 AI 智能、去中心化金融与实体资产映射，构建下一代 Web3 金融基础设施。"
           />
           <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-3 lg:px-8">
             {[
@@ -330,28 +330,43 @@ const App = () => {
         </section>
 
         <section id="market" className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-            <div>
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center">
               <span className="section-eyebrow">Market Pulse</span>
-              <h2 className="mt-4 text-3xl font-black text-stone-50 md:text-5xl">AI 驱动的智能金融生态</h2>
-              <p className="mt-5 leading-8 text-stone-300">
-                通过人工智能深度融合 Web4、DeFi、RWA 与 DAO，打造下一代金融操作系统，为用户提供全方位的智能金融服务。
+              <h2 className="mt-4 text-3xl font-black text-stone-50 md:text-5xl">AURORA 预测市场趋势</h2>
+              <p className="mt-5 leading-8 text-stone-300 text-left">
+                2026 年，区块链行业全面进入 Web4 智能共生时代。权威机构趋势预测如下：
               </p>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              {[
-                { label: 'Web4 智能代理', value: 'AI Agent', icon: Sparkles },
-                { label: 'DeFi 风控进化', value: 'Risk Engine', icon: Lock },
-                { label: 'RWA 资产映射', value: 'Real Assets', icon: CircleDollarSign },
-                { label: '生态治理增长', value: 'DAO Growth', icon: BarChart3 },
-              ].map((item) => (
-                <div key={item.label} className="signal-card">
-                  <item.icon className="h-7 w-7 text-amber-300" />
-                  <div className="mt-7 text-sm text-stone-400">{item.label}</div>
-                  <div className="mt-2 text-2xl font-black text-stone-50">{item.value}</div>
-                </div>
-              ))}
+            <div className="mt-10 grid gap-6">
+              <div className="signal-card">
+                <h3 className="text-lg font-black text-amber-300">AI + Blockchain 深度融合</h3>
+                <p className="mt-3 leading-7 text-stone-300">
+                  Gartner 与 Coinbase Ventures 预测，2026 年超过 65% 的 DeFi 项目将集成 AI 智能代理，用于自主收益优化和市场预测。AURORA 的动态智能递增机制与 AI 辅助预测功能，正是这一趋势的标杆落地。
+                </p>
+              </div>
+              <div className="signal-card">
+                <h3 className="text-lg font-black text-amber-300">预测市场与 RWA 爆发增长</h3>
+                <p className="mt-3 leading-7 text-stone-300">
+                  Messari 报告预计预测市场规模将达数百亿美元，RWA 代币化资产规模突破 5000 亿美元。AURORA 结合 AI 趋势预测与 USDT 强锚定底池，实现收益确定性与资产增值双重驱动。
+                </p>
+              </div>
+              <div className="signal-card">
+                <h3 className="text-lg font-black text-amber-300">DeFi 2.0 向可持续智能演进</h3>
+                <p className="mt-3 leading-7 text-stone-300">
+                  Paradigm 和 Bankless 等机构认为，市场将淘汰高风险短期模式，转向动态智能 + 闭环自循环 + 严格风控的产品。AURORA 完美契合这一方向。
+                </p>
+              </div>
+              <div className="signal-card">
+                <h3 className="text-lg font-black text-amber-300">用户主权与分布式智能</h3>
+                <p className="mt-3 leading-7 text-stone-300">
+                  Web4 核心是个人价值主权。AURORA 通过节点体系与智能押单，让用户真正成为生态共建者与受益者。
+                </p>
+              </div>
             </div>
+            <p className="mt-10 text-center text-lg font-bold text-amber-200">
+              AURORA 站在 Web4 多重风口核心，为用户提供 2026 年最具竞争力与可持续性的智能金融解决方案。
+            </p>
           </div>
         </section>
 
