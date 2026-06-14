@@ -299,10 +299,44 @@
             createInput(resource.type, (value) => (resource.type = value), "类型"),
             createInput(resource.size, (value) => (resource.size = value), "大小"),
           );
+
+          const urlInput = createInput(resource.url || "", (value) => (resource.url = value), "资料链接 / 上传后自动生成");
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept = ".pdf,.doc,.docx,.ppt,.pptx,.txt";
+
+          const uploadBtn = document.createElement("button");
+          uploadBtn.className = "ghost";
+          uploadBtn.textContent = "上传文件";
+          uploadBtn.onclick = async () => {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {
+              $("status").textContent = "请先选择一个文件。";
+              return;
+            }
+            $("status").textContent = `正在上传：${file.name}`;
+            try {
+              resource.url = await uploadFile(file);
+              urlInput.value = resource.url;
+              $("status").textContent = "文件已上传，请点击「保存到服务器」。";
+            } catch (error) {
+              $("status").textContent = error.message;
+            }
+          };
+
+          const currentUrl = document.createElement("div");
+          currentUrl.className = "video-url";
+          currentUrl.textContent = resource.url ? `当前文件：${resource.url}` : "当前未上传文件";
+
+          const uploadArea = document.createElement("div");
+          uploadArea.className = "upload-area";
+          uploadArea.append(fileInput, uploadBtn, currentUrl);
+
           card.append(
             createInput(resource.title, (value) => (resource.title = value), "资料标题"),
             row,
-            createInput(resource.url || "", (value) => (resource.url = value), "资料链接 / 上传地址"),
+            urlInput,
+            uploadArea,
             removeButton("resources", index),
           );
           root.append(card);

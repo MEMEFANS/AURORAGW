@@ -29,6 +29,12 @@ const mimeTypes = {
   '.webm': 'video/webm',
   '.mov': 'video/quicktime',
   '.m4v': 'video/x-m4v',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.txt': 'text/plain; charset=utf-8',
 };
 
 const sendJson = (res, statusCode, payload) => {
