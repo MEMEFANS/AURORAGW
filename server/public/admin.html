@@ -31,7 +31,7 @@
         background: linear-gradient(105deg, #94620f, #f9e69a 32%, #d4a33a 58%, #fff2ad 78%, #9a620f);
         box-shadow: 0 0 30px rgba(250, 204, 21, 0.28);
       }
-      h1, h2, p { margin: 0; }
+      h1, h2, h3, p { margin: 0; }
       .muted { color: #a8a29e; }
       .login, .panel, .card {
         border: 1px solid rgba(253, 230, 138, 0.12);
@@ -41,11 +41,10 @@
         backdrop-filter: blur(18px);
       }
       .login { display: grid; max-width: 520px; margin: 80px auto 0; gap: 16px; padding: 28px; }
-      .panel { padding: 22px; }
-      .grid { display: grid; grid-template-columns: 0.92fr 1.08fr; gap: 20px; }
+      .panel { padding: 24px; }
       .stack, .list, .card { display: grid; gap: 14px; }
-      .card { padding: 16px; }
-      .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+      .card { padding: 18px; }
+      .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
       label { display: block; margin: 14px 0 8px; color: rgba(254, 243, 199, 0.88); font-size: 13px; font-weight: 800; }
       input, textarea, select {
         width: 100%;
@@ -69,8 +68,43 @@
       .hint { color: #a8a29e; font-size: 13px; line-height: 1.7; }
       .video-url { word-break: break-all; color: #fde68a; font-size: 13px; }
       .hidden { display: none; }
+      
+      /* 标签页样式 */
+      .tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+      .tab { 
+        padding: 10px 20px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        border: 1px solid rgba(253, 230, 138, 0.18);
+        background: rgba(253, 230, 138, 0.08);
+        color: #fde68a;
+        font-weight: 700;
+        transition: all 0.2s;
+      }
+      .tab:hover { background: rgba(253, 230, 138, 0.15); }
+      .tab.active { 
+        background: linear-gradient(105deg, #94620f, #f9e69a 32%, #d4a33a 58%, #fff2ad 78%, #9a620f);
+        color: #111827;
+        border-color: transparent;
+      }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      
+      /* 分割线 */
+      .divider { height: 1px; background: rgba(253, 230, 138, 0.12); margin: 16px 0; }
+      
+      /* 文件上传区域 */
+      .upload-area {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+        border: 1px dashed rgba(253, 230, 138, 0.3);
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.2);
+      }
+      
       @media (max-width: 900px) {
-        .topbar, .grid, .two { grid-template-columns: 1fr; }
+        .topbar, .two { grid-template-columns: 1fr; }
         .topbar { align-items: flex-start; flex-direction: column; }
       }
     </style>
@@ -99,13 +133,22 @@
         <div class="status" id="loginStatus"></div>
       </section>
 
-      <section class="grid hidden" id="editor">
-        <div class="stack">
+      <section class="hidden" id="editor">
+        <div class="tabs" id="tabs">
+          <div class="tab active" data-tab="home">首页内容</div>
+          <div class="tab" data-tab="metrics">运营指标</div>
+          <div class="tab" data-tab="resources">资料管理</div>
+          <div class="tab" data-tab="videos">视频管理</div>
+          <div class="tab" data-tab="notices">公告管理</div>
+        </div>
+
+        <div class="tab-content active" id="tab-home">
           <div class="panel">
-            <div class="section-head"><h2>首页内容</h2></div>
+            <h2>首页内容设置</h2>
+            <div class="divider"></div>
             <label>主标题</label>
             <input id="heroTitle" />
-            <label>鎏金标题</label>
+            <label>高亮标题</label>
             <input id="heroHighlight" />
             <label>介绍文案</label>
             <textarea id="heroText"></textarea>
@@ -114,14 +157,19 @@
             <label>顶部公告</label>
             <input id="announcement" />
           </div>
+        </div>
 
+        <div class="tab-content" id="tab-metrics">
           <div class="panel">
-            <div class="section-head"><h2>运营指标</h2></div>
+            <div class="section-head">
+              <h2>运营指标</h2>
+              <button class="ghost" data-add="metrics">新增指标</button>
+            </div>
             <div class="list" id="metrics"></div>
           </div>
         </div>
 
-        <div class="stack">
+        <div class="tab-content" id="tab-resources">
           <div class="panel">
             <div class="section-head">
               <h2>资料管理</h2>
@@ -129,18 +177,22 @@
             </div>
             <div class="list" id="resources"></div>
           </div>
+        </div>
 
+        <div class="tab-content" id="tab-videos">
           <div class="panel">
             <div class="section-head">
               <div>
                 <h2>视频管理</h2>
-                <p class="hint">支持上传 mp4、webm、mov、m4v。上传后记得点击“保存到服务器”。</p>
+                <p class="hint">支持上传 mp4、webm、mov、m4v。上传后记得点击「保存到服务器」。</p>
               </div>
               <button class="ghost" data-add="videos">新增视频</button>
             </div>
             <div class="list" id="videos"></div>
           </div>
+        </div>
 
+        <div class="tab-content" id="tab-notices">
           <div class="panel">
             <div class="section-head">
               <h2>公告管理</h2>
@@ -158,6 +210,7 @@
       const state = {
         token: localStorage.getItem("aurora-admin-token") || "",
         data: null,
+        currentTab: "home"
       };
 
       const $ = (id) => document.getElementById(id);
@@ -221,13 +274,14 @@
       const renderMetrics = () => {
         const root = $("metrics");
         root.innerHTML = "";
-        state.data.metrics.forEach((metric) => {
+        state.data.metrics.forEach((metric, index) => {
           const card = document.createElement("div");
           card.className = "card";
           card.append(
             createInput(metric.label, (value) => (metric.label = value), "指标名称"),
             createInput(metric.value, (value) => (metric.value = value), "指标数值"),
             createInput(metric.trend, (value) => (metric.trend = value), "变化趋势"),
+            removeButton("metrics", index)
           );
           root.append(card);
         });
@@ -287,7 +341,7 @@
             try {
               video.url = await uploadFile(file);
               urlInput.value = video.url;
-              $("status").textContent = "视频已上传，请点击“保存到服务器”。";
+              $("status").textContent = "视频已上传，请点击「保存到服务器」。";
             } catch (error) {
               $("status").textContent = error.message;
             }
@@ -297,13 +351,15 @@
           currentUrl.className = "video-url";
           currentUrl.textContent = video.url ? `当前视频：${video.url}` : "当前未上传视频";
 
+          const uploadArea = document.createElement("div");
+          uploadArea.className = "upload-area";
+          uploadArea.append(fileInput, uploadBtn, currentUrl);
+
           card.append(
             createInput(video.title, (value) => (video.title = value), "视频标题"),
             metaRow,
             urlInput,
-            fileInput,
-            uploadBtn,
-            currentUrl,
+            uploadArea,
             removeButton("videos", index),
           );
           root.append(card);
@@ -324,7 +380,12 @@
           select.innerHTML = "<option>已发布</option><option>草稿</option>";
           select.value = notice.status || "草稿";
           select.onchange = () => (notice.status = select.value);
-          card.append(createInput(notice.title, (value) => (notice.title = value), "公告标题"), content, select, removeButton("notices", index));
+          card.append(
+            createInput(notice.title, (value) => (notice.title = value), "公告标题"), 
+            content, 
+            select, 
+            removeButton("notices", index)
+          );
           root.append(card);
         });
       };
@@ -381,12 +442,23 @@
         button.onclick = () => {
           const key = button.dataset.add;
           const templates = {
+            metrics: { label: "新指标", value: "0", trend: "+0%" },
             resources: { title: "新资料标题", type: "PDF", size: "1.0 MB", url: "" },
             videos: { title: "新视频标题", author: "Aurora Team", views: "0", url: "" },
             notices: { title: "新公告", content: "填写公告内容", status: "草稿" },
           };
           state.data[key].push({ ...templates[key] });
           render();
+        };
+      });
+
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.onclick = () => {
+          document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+          document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+          tab.classList.add("active");
+          $(`tab-${tab.dataset.tab}`).classList.add("active");
+          state.currentTab = tab.dataset.tab;
         };
       });
 
