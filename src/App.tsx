@@ -99,6 +99,18 @@ const resolveMediaUrl = (url?: string) => {
   return url.startsWith('/uploads/') ? `${apiBase}${url}` : url;
 };
 
+// 解析 YouTube 视频 ID
+const getYouTubeVideoId = (url: string) => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
 const SectionTitle = ({ eyebrow, title, desc }: { eyebrow: string; title: string; desc: string }) => (
   <div className="mx-auto mb-12 max-w-3xl text-center">
     <span className="section-eyebrow">{eyebrow}</span>
@@ -378,6 +390,8 @@ const App = () => {
             <div className="grid gap-6 md:grid-cols-3">
               {data.videos.map((video, index) => {
                 const videoUrl = resolveMediaUrl(video.url);
+                const youtubeId = videoUrl ? getYouTubeVideoId(videoUrl) : null;
+                const youtubeThumbnail = youtubeId ? `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg` : null;
 
                 return (
                 <div
@@ -386,6 +400,17 @@ const App = () => {
                   onClick={() => videoUrl && setPlayingVideo({ url: videoUrl, title: video.title })}
                 >
                   <div className="video-cover">
+                    {youtubeThumbnail ? (
+                      <img
+                        src={youtubeThumbnail}
+                        alt={video.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(250,204,21,0.42),transparent_34%),linear-gradient(135deg,rgba(20,184,166,0.18),rgba(0,0,0,0.35))]" />
                     <div className="relative z-10 grid h-full place-items-center">
                       <PlayCircle className="h-10 w-10 sm:h-14 sm:w-14 text-amber-100/90" />
@@ -448,14 +473,29 @@ const App = () => {
                 </button>
               </div>
               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black border border-amber-200/20">
-                <video
-                  src={playingVideo.url}
-                  controls
-                  autoPlay
-                  playsInline
-                  preload="metadata"
-                  className="w-full h-full"
-                />
+                {(() => {
+                  const youtubeId = getYouTubeVideoId(playingVideo.url);
+                  if (youtubeId) {
+                    return (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    );
+                  }
+                  return (
+                    <video
+                      src={playingVideo.url}
+                      controls
+                      autoPlay
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full"
+                    />
+                  );
+                })()}
               </div>
             </motion.div>
           </motion.div>
