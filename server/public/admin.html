@@ -320,7 +320,8 @@
         data: null,
         originalData: null,
         currentTab: "home",
-        hasUnsavedChanges: false
+        hasUnsavedChanges: false,
+        isSaving: false
       };
 
       const $ = (id) => document.getElementById(id);
@@ -380,6 +381,7 @@
 
       // 标记有未保存更改
       const markUnsaved = () => {
+        if (state.isSaving) return;
         state.hasUnsavedChanges = true;
         $("unsavedIndicator").classList.remove("hidden");
         $("saveBtn").classList.add("pulse");
@@ -826,17 +828,24 @@
       };
 
       $("saveBtn").onclick = async () => {
+        if (state.isSaving) return;
+        state.isSaving = true;
+        $("saveBtn").disabled = true;
         showToast("正在保存...");
         try {
-          await request("/api/admin/site", {
+          const payload = await request("/api/admin/site", {
             method: "POST",
             body: JSON.stringify(state.data),
           });
+          state.data = payload.data || state.data;
           state.originalData = JSON.stringify(state.data);
           clearUnsaved();
           showToast(`已保存 ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`);
         } catch (error) {
           showToast(error.message, "error");
+        } finally {
+          state.isSaving = false;
+          $("saveBtn").disabled = false;
         }
       };
 
