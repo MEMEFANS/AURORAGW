@@ -343,6 +343,7 @@
       const uploadFile = async (file, progressCallback) => {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
+          xhr.timeout = 1000 * 60 * 60;
           
           xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable && progressCallback) {
@@ -369,7 +370,8 @@
             }
           });
           
-          xhr.addEventListener('error', () => reject(new Error('上传失败，网络错误')));
+          xhr.addEventListener('error', () => reject(new Error('上传连接中断。请检查网络，或先把视频压缩到 100MB 以内再上传。')));
+          xhr.addEventListener('timeout', () => reject(new Error('上传或转码超时。请压缩视频，或先转为 H.264/AAC MP4 后再上传。')));
           xhr.addEventListener('abort', () => reject(new Error('上传已取消')));
           
           xhr.open('POST', `/api/admin/upload?filename=${encodeURIComponent(file.name)}`);

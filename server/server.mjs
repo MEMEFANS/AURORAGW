@@ -42,6 +42,10 @@ const mimeTypes = {
 };
 
 const sendJson = (res, statusCode, payload) => {
+  if (res.headersSent || res.destroyed) {
+    return;
+  }
+
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
@@ -179,6 +183,9 @@ const serveUploadSimple = async (req, res, pathname) => {
 
 const server = createServer(async (req, res) => {
   try {
+    req.setTimeout(1000 * 60 * 60);
+    res.setTimeout(1000 * 60 * 60);
+
     const url = new URL(req.url || '/', `http://${req.headers.host}`);
 
     if (req.method === 'OPTIONS') {
@@ -277,6 +284,15 @@ const server = createServer(async (req, res) => {
         } catch (cleanupError) {
           console.error('清理上传文件失败:', cleanupError);
         }
+        const isClientAbort =
+          error instanceof Error &&
+          (error.code === 'ERR_STREAM_PREMATURE_CLOSE' || error.message.includes('Premature close'));
+
+        if (isClientAbort) {
+          console.warn('上传连接已中断，已清理未完成文件。');
+          return;
+        }
+
         sendJson(res, 500, { message: '上传失败: ' + (error instanceof Error ? error.message : '未知错误') });
       }
       return;
