@@ -4,6 +4,8 @@ import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { basename, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pipeline } from 'node:stream/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT || 8787);
@@ -11,6 +13,7 @@ const adminToken = process.env.ADMIN_TOKEN;
 const dataPath = process.env.DATA_PATH || join(__dirname, 'data', 'site.json');
 const publicDir = join(__dirname, 'public');
 const uploadsDir = join(__dirname, 'uploads');
+const execFileAsync = promisify(execFile);
 
 if (!adminToken) {
   console.error('Missing ADMIN_TOKEN. Set a strong backend password before starting the server.');
@@ -62,6 +65,47 @@ const safeUploadName = (name) => {
   const extension = extname(parsed).toLowerCase() || '.mp4';
   const base = parsed.replace(extension, '').slice(0, 60) || 'video';
   return `${Date.now()}-${base}${extension}`;
+};
+
+const isVideoUpload = (fileName) => ['.mp4', '.webm', '.mov', '.m4v'].includes(extname(fileName).toLowerCase());
+
+const toWebVideoName = (fileName) => {
+  const extension = extname(fileName);
+  const base = fileName.slice(0, Math.max(0, fileName.length - extension.length));
+  return `${base}-web.mp4`;
+};
+
+const transcodeVideoForWeb = async (inputPath, outputPath) => {
+  await execFileAsync(
+    'ffmpeg',
+    [
+      '-y',
+      '-i',
+      inputPath,
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a?',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'veryfast',
+      '-crf',
+      '23',
+      '-pix_fmt',
+      'yuv420p',
+      '-profile:v',
+      'main',
+      '-movflags',
+      '+faststart',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '128k',
+      outputPath,
+    ],
+    { timeout: 1000 * 60 * 20 },
+  );
 };
 
 const hasAdminAuth = (req) => {
@@ -194,6 +238,36 @@ const server = createServer(async (req, res) => {
           return;
         }
         
+        if (isVideoUpload(fileName)) {
+          const webFileName = toWebVideoName(fileName);
+          const webFilePath = join(uploadsDir, webFileName);
+
+          try {
+            await transcodeVideoForWeb(filePath, webFilePath);
+            const webStats = await stat(webFilePath);
+            sendJson(res, 200, {
+              ok: true,
+              url: `/uploads/${webFileName}`,
+              originalUrl: `/uploads/${fileName}`,
+              size: webStats.size,
+              message: '视频已自动转码为网页兼容格式。',
+            });
+            return;
+          } catch (transcodeError) {
+            console.error('视频转码失败:', transcodeError);
+            if (existsSync(webFilePath)) {
+              await unlink(webFilePath);
+            }
+            sendJson(res, 200, {
+              ok: true,
+              url: `/uploads/${fileName}`,
+              size: fileSize,
+              warning: '视频已上传，但自动转码失败。若出现黑屏，请先转成 H.264/AAC MP4 后再上传。',
+            });
+            return;
+          }
+        }
+
         sendJson(res, 200, { ok: true, url: `/uploads/${fileName}`, size: fileSize });
       } catch (error) {
         try {

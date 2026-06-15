@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -294,7 +294,7 @@
             <div class="section-head">
               <div>
                 <h2>视频管理</h2>
-                <p class="hint">支持上传 mp4、webm、mov、m4v。上传后记得点击「保存到服务器」。</p>
+                <p class="hint">支持上传 mp4、webm、mov、m4v。视频会自动转成网页兼容格式，完成后记得点击「保存到服务器」。</p>
               </div>
               <button class="ghost" data-add="videos">新增视频</button>
             </div>
@@ -354,7 +354,7 @@
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const payload = JSON.parse(xhr.responseText);
-                resolve(payload.url);
+                resolve(payload);
               } catch (e) {
                 reject(new Error('服务器返回无效响应'));
               }
@@ -506,13 +506,14 @@
             
             showToast(`正在上传：${file.name}`);
             try {
-              resource.url = await uploadFile(file, (percent) => {
+              const uploadResult = await uploadFile(file, (percent) => {
                 progressFill.style.width = `${percent}%`;
                 progressText.textContent = `${Math.round(percent)}%`;
               });
+              resource.url = uploadResult.url;
               urlInput.value = resource.url;
               markUnsaved();
-              showToast("文件已上传，请点击「保存到服务器」。", "warning");
+              showToast(uploadResult.message || uploadResult.warning || "文件已上传，请点击「保存到服务器」。", "warning");
             } catch (error) {
               showToast(error.message, "error");
             } finally {
@@ -550,13 +551,14 @@
             
             showToast(`正在上传：${file.name}`);
             try {
-              resource.url = await uploadFile(file, (percent) => {
+              const uploadResult = await uploadFile(file, (percent) => {
                 progressFill.style.width = `${percent}%`;
                 progressText.textContent = `${Math.round(percent)}%`;
               });
+              resource.url = uploadResult.url;
               urlInput.value = resource.url;
               markUnsaved();
-              showToast("文件已上传，请点击「保存到服务器」。", "warning");
+              showToast(uploadResult.message || uploadResult.warning || "文件已上传，请点击「保存到服务器」。", "warning");
             } catch (error) {
               showToast(error.message, "error");
             } finally {
@@ -661,14 +663,15 @@
             
             showToast(`正在上传：${file.name}`);
             try {
-              video.url = await uploadFile(file, (percent) => {
+              const uploadResult = await uploadFile(file, (percent) => {
                 progressFill.style.width = `${percent}%`;
                 progressText.textContent = `${Math.round(percent)}%`;
               });
+              video.url = uploadResult.url;
               urlInput.value = video.url;
               markUnsaved();
               updatePreview();
-              showToast("视频已上传，请点击「保存到服务器」。", "warning");
+              showToast(uploadResult.message || uploadResult.warning || "视频已上传，请点击「保存到服务器」。", "warning");
             } catch (error) {
               showToast(error.message, "error");
             } finally {
@@ -706,14 +709,15 @@
             
             showToast(`正在上传：${file.name}`);
             try {
-              video.url = await uploadFile(file, (percent) => {
+              const uploadResult = await uploadFile(file, (percent) => {
                 progressFill.style.width = `${percent}%`;
                 progressText.textContent = `${Math.round(percent)}%`;
               });
+              video.url = uploadResult.url;
               urlInput.value = video.url;
               markUnsaved();
               updatePreview();
-              showToast("视频已上传，请点击「保存到服务器」。", "warning");
+              showToast(uploadResult.message || uploadResult.warning || "视频已上传，请点击「保存到服务器」。", "warning");
             } catch (error) {
               showToast(error.message, "error");
             } finally {
@@ -876,3 +880,4 @@
     </script>
   </body>
 </html>
+
