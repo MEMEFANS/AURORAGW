@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
-import { mkdir, readFile, writeFile, createWriteStream, existsSync } from 'node:fs';
-import { mkdir as mkdirAsync, stat, unlink } from 'node:fs/promises';
+import { createWriteStream, existsSync } from 'node:fs';
+import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { basename, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pipeline } from 'node:stream/promises';
@@ -176,7 +176,7 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      await mkdirAsync(uploadsDir, { recursive: true });
+      await mkdir(uploadsDir, { recursive: true });
       const fileName = safeUploadName(url.searchParams.get('filename'));
       const filePath = join(uploadsDir, fileName);
       
