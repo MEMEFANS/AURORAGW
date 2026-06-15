@@ -111,6 +111,16 @@ const getYouTubeVideoId = (url: string) => {
   return null;
 };
 
+const isDirectVideoUrl = (url?: string) => {
+  const value = url?.trim();
+
+  if (!value) {
+    return false;
+  }
+
+  return value.startsWith('/uploads/') || /\.(mp4|webm|mov|m4v)(?:[?#].*)?$/i.test(value);
+};
+
 const SectionTitle = ({ eyebrow, title, desc }: { eyebrow: string; title: string; desc: string }) => (
   <div className="mx-auto mb-12 max-w-3xl text-center">
     <span className="section-eyebrow">{eyebrow}</span>
@@ -407,12 +417,23 @@ const App = () => {
                 const videoUrl = resolveMediaUrl(video.url);
                 const youtubeId = videoUrl ? getYouTubeVideoId(videoUrl) : null;
                 const youtubeThumbnail = youtubeId ? `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg` : null;
+                const canPlayInline = isDirectVideoUrl(video.url);
+                const canOpenExternal = Boolean(videoUrl && !canPlayInline);
 
                 return (
                 <div
                   key={video.title}
                   className={`video-card ${videoUrl ? 'cursor-pointer' : 'opacity-60'}`}
-                  onClick={() => videoUrl && setPlayingVideo({ url: videoUrl, title: video.title })}
+                  onClick={() => {
+                    if (canPlayInline) {
+                      setPlayingVideo({ url: videoUrl, title: video.title });
+                      return;
+                    }
+
+                    if (canOpenExternal) {
+                      window.open(videoUrl, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
                 >
                   <div className="video-cover">
                     {youtubeThumbnail ? (
@@ -430,8 +451,11 @@ const App = () => {
                     <div className="relative z-10 grid h-full place-items-center">
                       <PlayCircle className="h-10 w-10 sm:h-14 sm:w-14 text-amber-100/90" />
                     </div>
-                    {videoUrl && (
-                      <span className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10 rounded bg-amber-200 px-2 py-1 text-xs font-black text-black">可播放</span>
+                    {canPlayInline && (
+                      <span className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10 rounded bg-amber-200 px-2 py-1 text-xs font-black text-black">站内播放</span>
+                    )}
+                    {canOpenExternal && (
+                      <span className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10 rounded bg-stone-900/85 px-2 py-1 text-xs font-black text-amber-100">外部视频</span>
                     )}
                     <span className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 z-10 rounded bg-black/45 px-2 py-1 text-xs text-stone-200">EP {index + 1}</span>
                   </div>

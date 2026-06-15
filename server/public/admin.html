@@ -598,7 +598,7 @@
             createInput(video.views, (value) => (video.views = value), "播放量"),
           );
 
-          const urlInput = createInput(video.url, (value) => (video.url = value), "视频链接（YouTube 链接或本地视频）");
+          const urlInput = createInput(video.url, (value) => (video.url = value), "视频链接（建议使用上传后的 /uploads/... 地址）");
           
           const fileInput = document.createElement("input");
           fileInput.type = "file";
@@ -732,7 +732,7 @@
 
           const hint = document.createElement("div");
           hint.style.cssText = "color: #78716c; font-size: 12px; margin-top: 8px;";
-          hint.textContent = "提示：可以粘贴 YouTube 链接，也可以上传本地视频文件（支持拖拽）";
+          hint.textContent = "提示：国内用户建议上传本地视频文件。YouTube 等海外链接会作为外部视频打开，可能需要网络代理。";
 
           card.append(
             createInput(video.title, (value) => (video.title = value), "视频标题"),
