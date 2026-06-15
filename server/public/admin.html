@@ -41,6 +41,9 @@
       .toast.error {
         background: rgba(239,68,68,0.95);
       }
+      .toast.warning {
+        background: rgba(245,158,11,0.95);
+      }
       .brand { display: flex; align-items: center; gap: 12px; }
       .logo {
         display: grid;
@@ -81,8 +84,18 @@
       textarea { min-height: 110px; resize: vertical; }
       input:focus, textarea:focus, select:focus { border-color: rgba(252, 211, 77, 0.72); box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.12); }
       .button-row { display: flex; flex-wrap: wrap; gap: 10px; }
-      button { cursor: pointer; border: 0; border-radius: 8px; padding: 11px 16px; font-weight: 900; }
+      button { cursor: pointer; border: 0; border-radius: 8px; padding: 11px 16px; font-weight: 900; transition: all 0.2s; }
+      button:hover { transform: translateY(-1px); }
+      button:active { transform: translateY(0); }
+      button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
       .gold { color: #111827; background: linear-gradient(105deg, #94620f, #f9e69a 32%, #d4a33a 58%, #fff2ad 78%, #9a620f); box-shadow: 0 14px 34px rgba(217, 119, 6, 0.24); }
+      .gold.pulse {
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { box-shadow: 0 14px 34px rgba(217, 119, 6, 0.24); }
+        50% { box-shadow: 0 14px 34px rgba(217, 119, 6, 0.6), 0 0 20px rgba(252, 211, 77, 0.4); }
+      }
       .ghost { color: #fde68a; border: 1px solid rgba(253, 230, 138, 0.18); background: rgba(253, 230, 138, 0.08); }
       .danger { color: #fecaca; border: 1px solid rgba(248, 113, 113, 0.24); background: rgba(127, 29, 29, 0.32); }
       .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -120,9 +133,77 @@
         display: grid;
         gap: 10px;
         padding: 16px;
-        border: 1px dashed rgba(253, 230, 138, 0.3);
+        border: 2px dashed rgba(253, 230, 138, 0.3);
         border-radius: 8px;
         background: rgba(0, 0, 0, 0.2);
+        transition: all 0.3s;
+      }
+      .upload-area:hover {
+        border-color: rgba(252, 211, 77, 0.6);
+        background: rgba(0, 0, 0, 0.3);
+      }
+      .upload-area.dragover {
+        border-color: rgba(252, 211, 77, 1);
+        background: rgba(252, 211, 77, 0.1);
+      }
+      
+      /* 上传进度条 */
+      .progress-container {
+        margin-top: 8px;
+      }
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #94620f, #f9e69a 32%, #d4a33a 58%, #fff2ad 78%, #9a620f);
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 4px;
+      }
+      .progress-text {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #a8a29e;
+      }
+      
+      /* 未保存提示 */
+      .unsaved-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: rgba(245, 158, 11, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 8px;
+        margin-bottom: 16px;
+        animation: slideIn 0.3s ease;
+      }
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .unsaved-dot {
+        width: 8px;
+        height: 8px;
+        background: #f59e0b;
+        border-radius: 50%;
+        animation: blink 1s infinite;
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+      
+      /* 预览区域 */
+      .preview-video {
+        max-width: 100%;
+        border-radius: 8px;
+        margin-top: 8px;
       }
       
       @media (max-width: 900px) {
@@ -146,6 +227,12 @@
           <button class="ghost" id="reloadBtn">重新加载</button>
           <button class="gold" id="saveBtn">保存到服务器</button>
         </div>
+      </div>
+
+      <!-- 未保存提示 -->
+      <div class="unsaved-indicator hidden" id="unsavedIndicator">
+        <div class="unsaved-dot"></div>
+        <span>有未保存的更改，请点击「保存到服务器」</span>
       </div>
 
       <section class="login" id="login">
@@ -231,7 +318,9 @@
       const state = {
         token: localStorage.getItem("aurora-admin-token") || "",
         data: null,
-        currentTab: "home"
+        originalData: null,
+        currentTab: "home",
+        hasUnsavedChanges: false
       };
 
       const $ = (id) => document.getElementById(id);
@@ -250,18 +339,57 @@
         return payload;
       };
 
-      const uploadFile = async (file) => {
-        const response = await fetch(`/api/admin/upload?filename=${encodeURIComponent(file.name)}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": file.type || "application/octet-stream",
-            Authorization: `Bearer ${state.token}`,
-          },
-          body: file,
+      const uploadFile = async (file, progressCallback) => {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable && progressCallback) {
+              const percentComplete = (e.loaded / e.total) * 100;
+              progressCallback(percentComplete);
+            }
+          });
+          
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const payload = JSON.parse(xhr.responseText);
+                resolve(payload.url);
+              } catch (e) {
+                reject(new Error('服务器返回无效响应'));
+              }
+            } else {
+              try {
+                const payload = JSON.parse(xhr.responseText);
+                reject(new Error(payload.message || '上传失败'));
+              } catch (e) {
+                reject(new Error('上传失败'));
+              }
+            }
+          });
+          
+          xhr.addEventListener('error', () => reject(new Error('上传失败，网络错误')));
+          xhr.addEventListener('abort', () => reject(new Error('上传已取消')));
+          
+          xhr.open('POST', `/api/admin/upload?filename=${encodeURIComponent(file.name)}`);
+          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+          xhr.setRequestHeader('Authorization', `Bearer ${state.token}`);
+          xhr.send(file);
         });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.message || "上传失败");
-        return payload.url;
+      };
+
+      // 标记有未保存更改
+      const markUnsaved = () => {
+        state.hasUnsavedChanges = true;
+        $("unsavedIndicator").classList.remove("hidden");
+        $("saveBtn").classList.add("pulse");
+      };
+
+      // 清除未保存标记
+      const clearUnsaved = () => {
+        state.hasUnsavedChanges = false;
+        $("unsavedIndicator").classList.add("hidden");
+        $("saveBtn").classList.remove("pulse");
       };
 
       const bindField = (id, key) => {
@@ -269,6 +397,7 @@
         input.value = state.data[key] || "";
         input.oninput = () => {
           state.data[key] = input.value;
+          markUnsaved();
         };
       };
 
@@ -276,17 +405,21 @@
         const input = document.createElement("input");
         input.value = value || "";
         input.placeholder = placeholder;
-        input.oninput = () => oninput(input.value);
+        input.oninput = () => {
+          oninput(input.value);
+          markUnsaved();
+        };
         return input;
       };
 
       // Toast notification
       let toastTimer = null;
-      const showToast = (message, isError = false) => {
+      const showToast = (message, type = "success") => {
         const toast = $("toast");
         toast.textContent = message;
-        toast.classList.remove("error", "show");
-        if (isError) toast.classList.add("error");
+        toast.classList.remove("error", "warning", "show");
+        if (type === "error") toast.classList.add("error");
+        if (type === "warning") toast.classList.add("warning");
         
         void toast.offsetWidth; // Trigger reflow
         toast.classList.add("show");
@@ -294,7 +427,7 @@
         if (toastTimer) clearTimeout(toastTimer);
         toastTimer = setTimeout(() => {
           toast.classList.remove("show");
-        }, 3000);
+        }, 5000);
       };
 
       const render = () => {
@@ -343,32 +476,102 @@
           fileInput.type = "file";
           fileInput.accept = ".pdf,.doc,.docx,.ppt,.pptx,.txt";
 
+          // 进度条容器
+          const progressContainer = document.createElement("div");
+          progressContainer.className = "progress-container hidden";
+          const progressBar = document.createElement("div");
+          progressBar.className = "progress-bar";
+          const progressFill = document.createElement("div");
+          progressFill.className = "progress-fill";
+          const progressText = document.createElement("div");
+          progressText.className = "progress-text";
+          progressBar.appendChild(progressFill);
+          progressContainer.appendChild(progressBar);
+          progressContainer.appendChild(progressText);
+
           const uploadBtn = document.createElement("button");
           uploadBtn.className = "ghost";
           uploadBtn.textContent = "上传文件";
           uploadBtn.onclick = async () => {
             const file = fileInput.files && fileInput.files[0];
             if (!file) {
-              showToast("请先选择一个文件。", true);
+              showToast("请先选择一个文件。", "error");
               return;
             }
+            
+            // 显示进度条
+            progressContainer.classList.remove("hidden");
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = "上传中...";
+            
             showToast(`正在上传：${file.name}`);
             try {
-              resource.url = await uploadFile(file);
+              resource.url = await uploadFile(file, (percent) => {
+                progressFill.style.width = `${percent}%`;
+                progressText.textContent = `${Math.round(percent)}%`;
+              });
               urlInput.value = resource.url;
-              showToast("文件已上传，请点击「保存到服务器」。");
+              markUnsaved();
+              showToast("文件已上传，请点击「保存到服务器」。", "warning");
             } catch (error) {
-              showToast(error.message, true);
+              showToast(error.message, "error");
+            } finally {
+              progressContainer.classList.add("hidden");
+              progressFill.style.width = "0%";
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = "上传文件";
             }
           };
+
+          // 拖拽上传
+          const uploadArea = document.createElement("div");
+          uploadArea.className = "upload-area";
+          
+          uploadArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            uploadArea.classList.add("dragover");
+          });
+          
+          uploadArea.addEventListener("dragleave", () => {
+            uploadArea.classList.remove("dragover");
+          });
+          
+          uploadArea.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove("dragover");
+            
+            const file = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!file) return;
+            
+            // 显示进度条
+            progressContainer.classList.remove("hidden");
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = "上传中...";
+            
+            showToast(`正在上传：${file.name}`);
+            try {
+              resource.url = await uploadFile(file, (percent) => {
+                progressFill.style.width = `${percent}%`;
+                progressText.textContent = `${Math.round(percent)}%`;
+              });
+              urlInput.value = resource.url;
+              markUnsaved();
+              showToast("文件已上传，请点击「保存到服务器」。", "warning");
+            } catch (error) {
+              showToast(error.message, "error");
+            } finally {
+              progressContainer.classList.add("hidden");
+              progressFill.style.width = "0%";
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = "上传文件";
+            }
+          });
 
           const currentUrl = document.createElement("div");
           currentUrl.className = "video-url";
           currentUrl.textContent = resource.url ? `当前文件：${resource.url}` : "当前未上传文件";
 
-          const uploadArea = document.createElement("div");
-          uploadArea.className = "upload-area";
-          uploadArea.append(fileInput, uploadBtn, currentUrl);
+          uploadArea.append(fileInput, uploadBtn, progressContainer, currentUrl);
 
           card.append(
             createInput(resource.title, (value) => (resource.title = value), "资料标题"),
@@ -401,36 +604,135 @@
           fileInput.type = "file";
           fileInput.accept = "video/mp4,video/webm,video/quicktime,video/x-m4v";
 
+          // 进度条容器
+          const progressContainer = document.createElement("div");
+          progressContainer.className = "progress-container hidden";
+          const progressBar = document.createElement("div");
+          progressBar.className = "progress-bar";
+          const progressFill = document.createElement("div");
+          progressFill.className = "progress-fill";
+          const progressText = document.createElement("div");
+          progressText.className = "progress-text";
+          progressBar.appendChild(progressFill);
+          progressContainer.appendChild(progressBar);
+          progressContainer.appendChild(progressText);
+
+          // 视频预览
+          const previewContainer = document.createElement("div");
+          previewContainer.className = "preview-container hidden";
+          
+          const updatePreview = () => {
+            if (video.url && !video.url.startsWith("/uploads/")) {
+              previewContainer.innerHTML = "";
+              previewContainer.classList.add("hidden");
+              return;
+            }
+            
+            if (video.url) {
+              previewContainer.innerHTML = `
+                <video class="preview-video" controls>
+                  <source src="${video.url}" type="video/mp4">
+                  您的浏览器不支持视频播放
+                </video>
+              `;
+              previewContainer.classList.remove("hidden");
+            } else {
+              previewContainer.innerHTML = "";
+              previewContainer.classList.add("hidden");
+            }
+          };
+          
+          updatePreview();
+
           const uploadBtn = document.createElement("button");
           uploadBtn.className = "ghost";
           uploadBtn.textContent = "上传视频";
           uploadBtn.onclick = async () => {
             const file = fileInput.files && fileInput.files[0];
             if (!file) {
-              showToast("请先选择一个视频文件。", true);
+              showToast("请先选择一个视频文件。", "error");
               return;
             }
+            
+            // 显示进度条
+            progressContainer.classList.remove("hidden");
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = "上传中...";
+            
             showToast(`正在上传：${file.name}`);
             try {
-              video.url = await uploadFile(file);
+              video.url = await uploadFile(file, (percent) => {
+                progressFill.style.width = `${percent}%`;
+                progressText.textContent = `${Math.round(percent)}%`;
+              });
               urlInput.value = video.url;
-              showToast("视频已上传，请点击「保存到服务器」。");
+              markUnsaved();
+              updatePreview();
+              showToast("视频已上传，请点击「保存到服务器」。", "warning");
             } catch (error) {
-              showToast(error.message, true);
+              showToast(error.message, "error");
+            } finally {
+              progressContainer.classList.add("hidden");
+              progressFill.style.width = "0%";
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = "上传视频";
             }
           };
+
+          // 拖拽上传
+          const uploadArea = document.createElement("div");
+          uploadArea.className = "upload-area";
+          
+          uploadArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            uploadArea.classList.add("dragover");
+          });
+          
+          uploadArea.addEventListener("dragleave", () => {
+            uploadArea.classList.remove("dragover");
+          });
+          
+          uploadArea.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove("dragover");
+            
+            const file = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!file) return;
+            
+            // 显示进度条
+            progressContainer.classList.remove("hidden");
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = "上传中...";
+            
+            showToast(`正在上传：${file.name}`);
+            try {
+              video.url = await uploadFile(file, (percent) => {
+                progressFill.style.width = `${percent}%`;
+                progressText.textContent = `${Math.round(percent)}%`;
+              });
+              urlInput.value = video.url;
+              markUnsaved();
+              updatePreview();
+              showToast("视频已上传，请点击「保存到服务器」。", "warning");
+            } catch (error) {
+              showToast(error.message, "error");
+            } finally {
+              progressContainer.classList.add("hidden");
+              progressFill.style.width = "0%";
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = "上传视频";
+            }
+          });
 
           const currentUrl = document.createElement("div");
           currentUrl.className = "video-url";
           currentUrl.textContent = video.url ? `当前视频：${video.url}` : "当前未设置视频";
 
-          const uploadArea = document.createElement("div");
-          uploadArea.className = "upload-area";
-          uploadArea.append(fileInput, uploadBtn, currentUrl);
+          uploadArea.append(fileInput, uploadBtn, progressContainer, currentUrl, previewContainer);
 
           const hint = document.createElement("div");
           hint.style.cssText = "color: #78716c; font-size: 12px; margin-top: 8px;";
-          hint.textContent = "提示：可以粘贴 YouTube 链接，也可以上传本地视频文件";
+          hint.textContent = "提示：可以粘贴 YouTube 链接，也可以上传本地视频文件（支持拖拽）";
 
           card.append(
             createInput(video.title, (value) => (video.title = value), "视频标题"),
@@ -453,11 +755,17 @@
           const content = document.createElement("textarea");
           content.value = notice.content || "";
           content.placeholder = "公告内容";
-          content.oninput = () => (notice.content = content.value);
+          content.oninput = () => {
+            notice.content = content.value;
+            markUnsaved();
+          };
           const select = document.createElement("select");
           select.innerHTML = "<option>已发布</option><option>草稿</option>";
           select.value = notice.status || "草稿";
-          select.onchange = () => (notice.status = select.value);
+          select.onchange = () => {
+            notice.status = select.value;
+            markUnsaved();
+          };
           card.append(
             createInput(notice.title, (value) => (notice.title = value), "公告标题"), 
             content, 
@@ -474,6 +782,7 @@
         button.textContent = "删除";
         button.onclick = () => {
           state.data[key].splice(index, 1);
+          markUnsaved();
           render();
         };
         return button;
@@ -483,6 +792,8 @@
         showToast("正在加载服务器数据...");
         state.data = await request("/api/admin/site");
         state.data.videos = (state.data.videos || []).map((video) => ({ url: "", ...video }));
+        state.originalData = JSON.stringify(state.data);
+        clearUnsaved();
         $("login").classList.add("hidden");
         $("editor").classList.remove("hidden");
         $("actions").classList.remove("hidden");
@@ -501,7 +812,14 @@
         }
       };
 
-      $("reloadBtn").onclick = () => loadData().catch((error) => showToast(error.message, true));
+      $("reloadBtn").onclick = () => {
+        if (state.hasUnsavedChanges) {
+          if (!confirm("有未保存的更改，确定要重新加载吗？")) {
+            return;
+          }
+        }
+        loadData().catch((error) => showToast(error.message, "error"));
+      };
 
       $("saveBtn").onclick = async () => {
         showToast("正在保存...");
@@ -510,9 +828,11 @@
             method: "POST",
             body: JSON.stringify(state.data),
           });
+          state.originalData = JSON.stringify(state.data);
+          clearUnsaved();
           showToast(`已保存 ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`);
         } catch (error) {
-          showToast(error.message, true);
+          showToast(error.message, "error");
         }
       };
 
@@ -526,6 +846,7 @@
             notices: { title: "新公告", content: "填写公告内容", status: "草稿" },
           };
           state.data[key].push({ ...templates[key] });
+          markUnsaved();
           render();
         };
       });
@@ -543,6 +864,15 @@
       if (state.token) {
         $("tokenInput").value = state.token;
       }
+
+      // 页面离开前提醒
+      window.addEventListener("beforeunload", (e) => {
+        if (state.hasUnsavedChanges) {
+          e.preventDefault();
+          e.returnValue = "";
+          return "";
+        }
+      });
     </script>
   </body>
 </html>
