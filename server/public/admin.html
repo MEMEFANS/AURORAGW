@@ -395,16 +395,48 @@
             createInput(video.views, (value) => (video.views = value), "播放量"),
           );
 
-          const urlInput = createInput(video.url, (value) => (video.url = value), "YouTube 视频链接（如：https://www.youtube.com/watch?v=xxxx）");
+          const urlInput = createInput(video.url, (value) => (video.url = value), "视频链接（YouTube 链接或本地视频）");
+          
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept = "video/mp4,video/webm,video/quicktime,video/x-m4v";
+
+          const uploadBtn = document.createElement("button");
+          uploadBtn.className = "ghost";
+          uploadBtn.textContent = "上传视频";
+          uploadBtn.onclick = async () => {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {
+              showToast("请先选择一个视频文件。", true);
+              return;
+            }
+            showToast(`正在上传：${file.name}`);
+            try {
+              video.url = await uploadFile(file);
+              urlInput.value = video.url;
+              showToast("视频已上传，请点击「保存到服务器」。");
+            } catch (error) {
+              showToast(error.message, true);
+            }
+          };
+
+          const currentUrl = document.createElement("div");
+          currentUrl.className = "video-url";
+          currentUrl.textContent = video.url ? `当前视频：${video.url}` : "当前未设置视频";
+
+          const uploadArea = document.createElement("div");
+          uploadArea.className = "upload-area";
+          uploadArea.append(fileInput, uploadBtn, currentUrl);
 
           const hint = document.createElement("div");
           hint.style.cssText = "color: #78716c; font-size: 12px; margin-top: 8px;";
-          hint.textContent = "提示：粘贴 YouTube 链接即可，系统会自动解析";
+          hint.textContent = "提示：可以粘贴 YouTube 链接，也可以上传本地视频文件";
 
           card.append(
             createInput(video.title, (value) => (video.title = value), "视频标题"),
             metaRow,
             urlInput,
+            uploadArea,
             hint,
             removeButton("videos", index),
           );
