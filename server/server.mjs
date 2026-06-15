@@ -48,23 +48,6 @@ const sendJson = (res, statusCode, payload) => {
   res.end(JSON.stringify(payload));
 };
 
-const readJsonBody = async (req) => {
-  const chunks = [];
-  for await (const chunk of req) {
-    chunks.push(chunk);
-  }
-  const raw = Buffer.concat(chunks).toString('utf8');
-  return raw ? JSON.parse(raw) : {};
-};
-
-const readBinaryBody = async (req) => {
-  const chunks = [];
-  for await (const chunk of req) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
-};
-
 const readSiteData = async () => {
   const data = await readFile(dataPath, 'utf8');
   return JSON.parse(data);
@@ -86,7 +69,15 @@ const hasAdminAuth = (req) => {
   return authHeader === `Bearer ${adminToken}`;
 };
 
-const serveStatic = async (req, res, pathname) => {
+const readBody = async (req) => {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+};
+
+const serveStaticSimple = async (req, res, pathname) => {
   const requestedPath = pathname === '/admin' ? '/admin.html' : pathname;
   const normalized = normalize(requestedPath).replace(/^(\.\.[/\\])+/, '');
   const filePath = join(publicDir, normalized);
@@ -97,37 +88,12 @@ const serveStatic = async (req, res, pathname) => {
     return;
   }
 
-  const fs = await import('node:fs');
-  const stats = await stat(filePath);
-  
-  // 支持范围请求
-  const range = req.headers.range;
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
-    const chunksize = (end - start) + 1;
-    
-    const stream = fs.createReadStream(filePath, { start, end });
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${stats.size}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunksize,
-      'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream',
-    });
-    await pipeline(stream, res);
-  } else {
-    res.writeHead(200, {
-      'Content-Length': stats.size,
-      'Accept-Ranges': 'bytes',
-      'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream',
-    });
-    const stream = fs.createReadStream(filePath);
-    await pipeline(stream, res);
-  }
+  const body = await readFile(filePath);
+  res.writeHead(200, { 'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream' });
+  res.end(body);
 };
 
-const serveUpload = async (req, res, pathname) => {
+const serveUploadSimple = async (req, res, pathname) => {
   const requestedPath = pathname.replace('/uploads/', '');
   const normalized = normalize(requestedPath).replace(/^(\.\.[/\\])+/, '');
   const filePath = join(uploadsDir, normalized);
@@ -141,7 +107,6 @@ const serveUpload = async (req, res, pathname) => {
   const fs = await import('node:fs');
   const stats = await stat(filePath);
   
-  // 支持范围请求，让视频可以拖拽进度条
   const range = req.headers.range;
   if (range) {
     const parts = range.replace(/bytes=/, '').split('-');
@@ -158,7 +123,6 @@ const serveUpload = async (req, res, pathname) => {
     });
     await pipeline(stream, res);
   } else {
-    // 普通流式传输
     res.writeHead(200, {
       'Content-Length': stats.size,
       'Accept-Ranges': 'bytes',
@@ -199,7 +163,8 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const nextData = await readJsonBody(req);
+      const body = await readBody(req);
+      const nextData = JSON.parse(body.toString('utf8'));
       await writeSiteData(nextData);
       sendJson(res, 200, { ok: true, data: nextData });
       return;
@@ -215,19 +180,15 @@ const server = createServer(async (req, res) => {
       const fileName = safeUploadName(url.searchParams.get('filename'));
       const filePath = join(uploadsDir, fileName);
       
-      // 使用流式上传，边读边写，提高速度并减少内存占用
       const writeStream = createWriteStream(filePath);
-      let fileSize = 0;
       
       try {
         await pipeline(req, writeStream);
         
-        // 检查文件是否为空
         const stats = await stat(filePath);
-        fileSize = stats.size;
+        const fileSize = stats.size;
         
         if (fileSize === 0) {
-          // 删除空文件
           await unlink(filePath);
           sendJson(res, 400, { message: '上传文件为空。' });
           return;
@@ -235,7 +196,6 @@ const server = createServer(async (req, res) => {
         
         sendJson(res, 200, { ok: true, url: `/uploads/${fileName}`, size: fileSize });
       } catch (error) {
-        // 清理不完整的上传
         try {
           if (existsSync(filePath)) {
             await unlink(filePath);
@@ -249,18 +209,19 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/uploads/')) {
-      await serveUpload(req, res, url.pathname);
+      await serveUploadSimple(req, res, url.pathname);
       return;
     }
 
     if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname.startsWith('/admin.'))) {
-      await serveStatic(req, res, url.pathname);
+      await serveStaticSimple(req, res, url.pathname);
       return;
     }
 
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Not found');
   } catch (error) {
+    console.error('Server error:', error);
     sendJson(res, 500, { message: error instanceof Error ? error.message : '服务器错误' });
   }
 });
