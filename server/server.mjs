@@ -1,8 +1,9 @@
 import { createServer } from 'node:http';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { mkdir, readFile, writeFile, createWriteStream, existsSync } from 'node:fs';
+import { mkdir as mkdirAsync, stat, unlink } from 'node:fs/promises';
 import { basename, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pipeline } from 'node:stream/promises';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT || 8787);
@@ -96,12 +97,37 @@ const serveStatic = async (req, res, pathname) => {
     return;
   }
 
-  const body = await readFile(filePath);
-  res.writeHead(200, { 'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream' });
-  res.end(body);
+  const fs = await import('node:fs');
+  const stats = await stat(filePath);
+  
+  // 支持范围请求
+  const range = req.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
+    const chunksize = (end - start) + 1;
+    
+    const stream = fs.createReadStream(filePath, { start, end });
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream',
+    });
+    await pipeline(stream, res);
+  } else {
+    res.writeHead(200, {
+      'Content-Length': stats.size,
+      'Accept-Ranges': 'bytes',
+      'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream',
+    });
+    const stream = fs.createReadStream(filePath);
+    await pipeline(stream, res);
+  }
 };
 
-const serveUpload = async (res, pathname) => {
+const serveUpload = async (req, res, pathname) => {
   const requestedPath = pathname.replace('/uploads/', '');
   const normalized = normalize(requestedPath).replace(/^(\.\.[/\\])+/, '');
   const filePath = join(uploadsDir, normalized);
@@ -112,9 +138,35 @@ const serveUpload = async (res, pathname) => {
     return;
   }
 
-  const body = await readFile(filePath);
-  res.writeHead(200, { 'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream' });
-  res.end(body);
+  const fs = await import('node:fs');
+  const stats = await stat(filePath);
+  
+  // 支持范围请求，让视频可以拖拽进度条
+  const range = req.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
+    const chunksize = (end - start) + 1;
+    
+    const stream = fs.createReadStream(filePath, { start, end });
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream',
+    });
+    await pipeline(stream, res);
+  } else {
+    // 普通流式传输
+    res.writeHead(200, {
+      'Content-Length': stats.size,
+      'Accept-Ranges': 'bytes',
+      'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream',
+    });
+    const stream = fs.createReadStream(filePath);
+    await pipeline(stream, res);
+  }
 };
 
 const server = createServer(async (req, res) => {
@@ -159,23 +211,45 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      await mkdir(uploadsDir, { recursive: true });
+      await mkdirAsync(uploadsDir, { recursive: true });
       const fileName = safeUploadName(url.searchParams.get('filename'));
       const filePath = join(uploadsDir, fileName);
-      const fileBody = await readBinaryBody(req);
-
-      if (!fileBody.length) {
-        sendJson(res, 400, { message: '上传文件为空。' });
-        return;
+      
+      // 使用流式上传，边读边写，提高速度并减少内存占用
+      const writeStream = createWriteStream(filePath);
+      let fileSize = 0;
+      
+      try {
+        await pipeline(req, writeStream);
+        
+        // 检查文件是否为空
+        const stats = await stat(filePath);
+        fileSize = stats.size;
+        
+        if (fileSize === 0) {
+          // 删除空文件
+          await unlink(filePath);
+          sendJson(res, 400, { message: '上传文件为空。' });
+          return;
+        }
+        
+        sendJson(res, 200, { ok: true, url: `/uploads/${fileName}`, size: fileSize });
+      } catch (error) {
+        // 清理不完整的上传
+        try {
+          if (existsSync(filePath)) {
+            await unlink(filePath);
+          }
+        } catch (cleanupError) {
+          console.error('清理上传文件失败:', cleanupError);
+        }
+        sendJson(res, 500, { message: '上传失败: ' + (error instanceof Error ? error.message : '未知错误') });
       }
-
-      await writeFile(filePath, fileBody);
-      sendJson(res, 200, { ok: true, url: `/uploads/${fileName}` });
       return;
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/uploads/')) {
-      await serveUpload(res, url.pathname);
+      await serveUpload(req, res, url.pathname);
       return;
     }
 
