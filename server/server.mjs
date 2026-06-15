@@ -8,7 +8,7 @@ import { pipeline } from 'node:stream/promises';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT || 8787);
 const adminToken = process.env.ADMIN_TOKEN;
-const dataPath = join(__dirname, 'data', 'site.json');
+const dataPath = process.env.DATA_PATH || join(__dirname, 'data', 'site.json');
 const publicDir = join(__dirname, 'public');
 const uploadsDir = join(__dirname, 'uploads');
 

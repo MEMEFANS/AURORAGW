@@ -29,7 +29,7 @@ npm run build
 后台是独立 Node 服务，不会打包进前台。
 
 ```bash
-ADMIN_TOKEN=请改成强密码 PORT=8787 npm run server
+ADMIN_TOKEN=请改成强密码 PORT=8787 DATA_PATH=/var/lib/aurora/site.json npm run server
 ```
 
 Windows PowerShell 示例：
@@ -37,6 +37,7 @@ Windows PowerShell 示例：
 ```powershell
 $env:ADMIN_TOKEN="请改成强密码"
 $env:PORT="8787"
+$env:DATA_PATH="C:\aurora-data\site.json"
 npm run server
 ```
 
@@ -52,10 +53,16 @@ http://服务器IP:8787/admin
 http://服务器IP:8787/api/site
 ```
 
-后台保存的数据文件在：
+后台保存的数据文件默认在：
 
 ```text
 server/data/site.json
+```
+
+生产环境建议通过 `DATA_PATH` 指向代码目录之外，例如：
+
+```text
+/var/lib/aurora/site.json
 ```
 
 后台上传的视频文件在：
@@ -64,6 +71,6 @@ server/data/site.json
 server/uploads/
 ```
 
-迁移服务器或备份时，记得同时保留 `server/data/` 和 `server/uploads/`。
+迁移服务器或备份时，记得同时保留 `DATA_PATH` 指向的数据文件和 `server/uploads/`。
 
 上线时建议用 Nginx 反向代理后台服务，并把 `/admin` 限制为内部人员访问。
