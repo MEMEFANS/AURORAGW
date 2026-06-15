@@ -381,6 +381,27 @@
         });
       };
 
+      const waitForTranscode = async (jobId, onStatus) => {
+        for (let attempt = 0; attempt < 240; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          const payload = await request(`/api/admin/transcode/${encodeURIComponent(jobId)}`);
+          const job = payload.job;
+
+          if (job.status === "done") {
+            onStatus && onStatus(job);
+            return job;
+          }
+
+          if (job.status === "error") {
+            throw new Error(job.error || "视频转码失败，请先转成 H.264/AAC MP4 后再上传。");
+          }
+
+          onStatus && onStatus(job);
+        }
+
+        throw new Error("视频仍在转码中，请稍后刷新后台查看。");
+      };
+
       // 标记有未保存更改
       const markUnsaved = () => {
         if (state.isSaving) return;
@@ -676,6 +697,19 @@
               markUnsaved();
               updatePreview();
               showToast(uploadResult.message || uploadResult.warning || "视频已上传，请点击「保存到服务器」。", "warning");
+              if (uploadResult.transcodeJobId) {
+                progressContainer.classList.remove("hidden");
+                progressFill.style.width = "100%";
+                progressText.textContent = "转码中";
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = "转码中...";
+                const job = await waitForTranscode(uploadResult.transcodeJobId);
+                video.url = job.webUrl;
+                urlInput.value = video.url;
+                markUnsaved();
+                updatePreview();
+                showToast("视频已转码完成，请点击「保存到服务器」。", "warning");
+              }
             } catch (error) {
               showToast(error.message, "error");
             } finally {
@@ -722,6 +756,19 @@
               markUnsaved();
               updatePreview();
               showToast(uploadResult.message || uploadResult.warning || "视频已上传，请点击「保存到服务器」。", "warning");
+              if (uploadResult.transcodeJobId) {
+                progressContainer.classList.remove("hidden");
+                progressFill.style.width = "100%";
+                progressText.textContent = "转码中";
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = "转码中...";
+                const job = await waitForTranscode(uploadResult.transcodeJobId);
+                video.url = job.webUrl;
+                urlInput.value = video.url;
+                markUnsaved();
+                updatePreview();
+                showToast("视频已转码完成，请点击「保存到服务器」。", "warning");
+              }
             } catch (error) {
               showToast(error.message, "error");
             } finally {

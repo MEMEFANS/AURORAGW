@@ -14,6 +14,7 @@ const dataPath = process.env.DATA_PATH || join(__dirname, 'data', 'site.json');
 const publicDir = join(__dirname, 'public');
 const uploadsDir = join(__dirname, 'uploads');
 const execFileAsync = promisify(execFile);
+const transcodeJobs = new Map();
 
 if (!adminToken) {
   console.error('Missing ADMIN_TOKEN. Set a strong backend password before starting the server.');
@@ -110,6 +111,40 @@ const transcodeVideoForWeb = async (inputPath, outputPath) => {
     ],
     { timeout: 1000 * 60 * 20 },
   );
+};
+
+const startTranscodeJob = ({ inputPath, outputPath, originalUrl, webUrl }) => {
+  const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const job = {
+    id: jobId,
+    status: 'processing',
+    originalUrl,
+    webUrl,
+    error: '',
+    startedAt: Date.now(),
+    finishedAt: 0,
+  };
+
+  transcodeJobs.set(jobId, job);
+
+  transcodeVideoForWeb(inputPath, outputPath)
+    .then(async () => {
+      const webStats = await stat(outputPath);
+      job.status = 'done';
+      job.size = webStats.size;
+      job.finishedAt = Date.now();
+    })
+    .catch(async (error) => {
+      console.error('视频转码失败:', error);
+      job.status = 'error';
+      job.error = error instanceof Error ? error.message : '转码失败';
+      job.finishedAt = Date.now();
+      if (existsSync(outputPath)) {
+        await unlink(outputPath);
+      }
+    });
+
+  return job;
 };
 
 const hasAdminAuth = (req) => {
@@ -248,31 +283,21 @@ const server = createServer(async (req, res) => {
         if (isVideoUpload(fileName)) {
           const webFileName = toWebVideoName(fileName);
           const webFilePath = join(uploadsDir, webFileName);
+          const job = startTranscodeJob({
+            inputPath: filePath,
+            outputPath: webFilePath,
+            originalUrl: `/uploads/${fileName}`,
+            webUrl: `/uploads/${webFileName}`,
+          });
 
-          try {
-            await transcodeVideoForWeb(filePath, webFilePath);
-            const webStats = await stat(webFilePath);
-            sendJson(res, 200, {
-              ok: true,
-              url: `/uploads/${webFileName}`,
-              originalUrl: `/uploads/${fileName}`,
-              size: webStats.size,
-              message: '视频已自动转码为网页兼容格式。',
-            });
-            return;
-          } catch (transcodeError) {
-            console.error('视频转码失败:', transcodeError);
-            if (existsSync(webFilePath)) {
-              await unlink(webFilePath);
-            }
-            sendJson(res, 200, {
-              ok: true,
-              url: `/uploads/${fileName}`,
-              size: fileSize,
-              warning: '视频已上传，但自动转码失败。若出现黑屏，请先转成 H.264/AAC MP4 后再上传。',
-            });
-            return;
-          }
+          sendJson(res, 200, {
+            ok: true,
+            url: `/uploads/${fileName}`,
+            size: fileSize,
+            transcodeJobId: job.id,
+            message: '视频已上传，正在后台转码。转码完成后会自动更新地址。',
+          });
+          return;
         }
 
         sendJson(res, 200, { ok: true, url: `/uploads/${fileName}`, size: fileSize });
@@ -295,6 +320,24 @@ const server = createServer(async (req, res) => {
 
         sendJson(res, 500, { message: '上传失败: ' + (error instanceof Error ? error.message : '未知错误') });
       }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname.startsWith('/api/admin/transcode/')) {
+      if (!hasAdminAuth(req)) {
+        sendJson(res, 401, { message: '未授权，请输入正确后台密钥。' });
+        return;
+      }
+
+      const jobId = decodeURIComponent(url.pathname.replace('/api/admin/transcode/', ''));
+      const job = transcodeJobs.get(jobId);
+
+      if (!job) {
+        sendJson(res, 404, { message: '转码任务不存在或服务已重启。' });
+        return;
+      }
+
+      sendJson(res, 200, { ok: true, job });
       return;
     }
 
