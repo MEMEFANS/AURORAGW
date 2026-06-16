@@ -161,20 +161,48 @@ const App = () => {
 
   useEffect(() => {
     const controller = new AbortController();
+    let isMounted = true;
 
-    fetch(`${apiBase}/api/site`, { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Failed to load site data');
-        }
-        return res.json();
-      })
-      .then((nextData: SiteData) => setData({ ...defaultData, ...nextData }))
-      .catch(() => {
+    const loadSiteData = async (signal?: AbortSignal) => {
+      const res = await fetch(`${apiBase}/api/site`, { signal, cache: 'no-store' });
+
+      if (!res.ok) {
+        throw new Error('Failed to load site data');
+      }
+
+      const nextData = (await res.json()) as SiteData;
+      if (isMounted) {
+        setData({ ...defaultData, ...nextData });
+      }
+    };
+
+    const refreshSiteData = () => {
+      loadSiteData().catch(() => undefined);
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshSiteData();
+      }
+    };
+
+    loadSiteData(controller.signal).catch(() => {
+      if (!controller.signal.aborted) {
         setData(defaultData);
-      });
+      }
+    });
 
-    return () => controller.abort();
+    const refreshInterval = window.setInterval(refreshSiteData, 30_000);
+    window.addEventListener('focus', refreshSiteData);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('focus', refreshSiteData);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const publishedNotices = useMemo(
