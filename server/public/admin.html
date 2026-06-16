@@ -294,7 +294,7 @@
             <div class="section-head">
               <div>
                 <h2>视频管理</h2>
-                <p class="hint">支持上传 mp4、webm、mov、m4v。大视频会自动分片上传并转成网页兼容格式，完成后记得点击「保存到服务器」。</p>
+                <p class="hint">支持上传 mp4、webm、mov、m4v，也可填写 B站视频链接或 BV 号。大视频会自动分片上传并转成网页兼容格式，完成后记得点击「保存到服务器」。</p>
               </div>
               <button class="ghost" data-add="videos">新增视频</button>
             </div>
@@ -677,7 +677,7 @@
             createInput(video.views, (value) => (video.views = value), "播放量"),
           );
 
-          const urlInput = createInput(video.url, (value) => (video.url = value), "视频链接（建议使用上传后的 /uploads/... 地址）");
+          const urlInput = createInput(video.url, (value) => (video.url = value), "视频链接（支持 /uploads/...、B站链接或 BV 号）");
           
           const fileInput = document.createElement("input");
           fileInput.type = "file";

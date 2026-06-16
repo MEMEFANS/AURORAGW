@@ -111,6 +111,31 @@ const getYouTubeVideoId = (url: string) => {
   return null;
 };
 
+const getBilibiliEmbedUrl = (url: string) => {
+  const value = url.trim();
+  const bvidMatch = value.match(/(?:^|[/?&=])((?:BV)[0-9A-Za-z]+)/);
+  const aidMatch = value.match(/(?:^|[/?&=])(?:av|aid=)(\d+)/i);
+  const pageMatch = value.match(/[?&](?:p|page)=(\d+)/i);
+  const page = Math.max(1, Number(pageMatch?.[1] || 1));
+  const params = new URLSearchParams({
+    isOutside: 'true',
+    autoplay: '0',
+    danmaku: '0',
+    p: String(page),
+    page: String(page),
+  });
+
+  if (bvidMatch?.[1]) {
+    params.set('bvid', bvidMatch[1]);
+  } else if (aidMatch?.[1]) {
+    params.set('aid', aidMatch[1]);
+  } else {
+    return null;
+  }
+
+  return `https://player.bilibili.com/player.html?${params.toString()}`;
+};
+
 const isDirectVideoUrl = (url?: string) => {
   const value = url?.trim();
 
@@ -415,9 +440,11 @@ const App = () => {
             <div className="grid gap-6 md:grid-cols-3">
               {data.videos.map((video, index) => {
                 const videoUrl = resolveMediaUrl(video.url);
-                const youtubeId = videoUrl ? getYouTubeVideoId(videoUrl) : null;
+                const canPlayDirect = isDirectVideoUrl(video.url);
+                const youtubeId = !canPlayDirect && videoUrl ? getYouTubeVideoId(videoUrl) : null;
+                const bilibiliEmbedUrl = !canPlayDirect && videoUrl ? getBilibiliEmbedUrl(videoUrl) : null;
                 const youtubeThumbnail = youtubeId ? `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg` : null;
-                const canPlayInline = isDirectVideoUrl(video.url);
+                const canPlayInline = canPlayDirect || Boolean(youtubeId || bilibiliEmbedUrl);
                 const canOpenExternal = Boolean(videoUrl && !canPlayInline);
 
                 return (
@@ -513,6 +540,18 @@ const App = () => {
               </div>
               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black border border-amber-200/20">
                 {(() => {
+                  if (isDirectVideoUrl(playingVideo.url)) {
+                    return (
+                      <video
+                        src={playingVideo.url}
+                        controls
+                        autoPlay
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full"
+                      />
+                    );
+                  }
                   const youtubeId = getYouTubeVideoId(playingVideo.url);
                   if (youtubeId) {
                     return (
@@ -524,16 +563,19 @@ const App = () => {
                       />
                     );
                   }
-                  return (
-                    <video
-                      src={playingVideo.url}
-                      controls
-                      autoPlay
-                      playsInline
-                      preload="metadata"
-                      className="w-full h-full"
-                    />
-                  );
+                  const bilibiliEmbedUrl = getBilibiliEmbedUrl(playingVideo.url);
+                  if (bilibiliEmbedUrl) {
+                    return (
+                      <iframe
+                        src={bilibiliEmbedUrl}
+                        title={playingVideo.title}
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    );
+                  }
+                  return null;
                 })()}
               </div>
             </motion.div>
