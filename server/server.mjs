@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { createWriteStream, existsSync } from 'node:fs';
-import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { basename, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pipeline } from 'node:stream/promises';
@@ -13,6 +13,7 @@ const adminToken = process.env.ADMIN_TOKEN;
 const dataPath = process.env.DATA_PATH || join(__dirname, 'data', 'site.json');
 const publicDir = join(__dirname, 'public');
 const uploadsDir = join(__dirname, 'uploads');
+const uploadPartsDir = join(__dirname, 'upload-parts');
 const execFileAsync = promisify(execFile);
 const transcodeJobs = new Map();
 
@@ -71,6 +72,8 @@ const safeUploadName = (name) => {
   const base = parsed.replace(extension, '').slice(0, 60) || 'video';
   return `${Date.now()}-${base}${extension}`;
 };
+
+const safeUploadId = (value) => basename(value || '').replace(/[^\w.-]+/g, '-').slice(0, 80);
 
 const isVideoUpload = (fileName) => ['.mp4', '.webm', '.mov', '.m4v'].includes(extname(fileName).toLowerCase());
 
@@ -145,6 +148,29 @@ const startTranscodeJob = ({ inputPath, outputPath, originalUrl, webUrl }) => {
     });
 
   return job;
+};
+
+const buildUploadPayload = async (fileName, filePath, fileSize) => {
+  if (isVideoUpload(fileName)) {
+    const webFileName = toWebVideoName(fileName);
+    const webFilePath = join(uploadsDir, webFileName);
+    const job = startTranscodeJob({
+      inputPath: filePath,
+      outputPath: webFilePath,
+      originalUrl: `/uploads/${fileName}`,
+      webUrl: `/uploads/${webFileName}`,
+    });
+
+    return {
+      ok: true,
+      url: `/uploads/${fileName}`,
+      size: fileSize,
+      transcodeJobId: job.id,
+      message: '视频已上传，正在后台转码。转码完成后会自动更新地址。',
+    };
+  }
+
+  return { ok: true, url: `/uploads/${fileName}`, size: fileSize };
 };
 
 const hasAdminAuth = (req) => {
@@ -280,27 +306,7 @@ const server = createServer(async (req, res) => {
           return;
         }
         
-        if (isVideoUpload(fileName)) {
-          const webFileName = toWebVideoName(fileName);
-          const webFilePath = join(uploadsDir, webFileName);
-          const job = startTranscodeJob({
-            inputPath: filePath,
-            outputPath: webFilePath,
-            originalUrl: `/uploads/${fileName}`,
-            webUrl: `/uploads/${webFileName}`,
-          });
-
-          sendJson(res, 200, {
-            ok: true,
-            url: `/uploads/${fileName}`,
-            size: fileSize,
-            transcodeJobId: job.id,
-            message: '视频已上传，正在后台转码。转码完成后会自动更新地址。',
-          });
-          return;
-        }
-
-        sendJson(res, 200, { ok: true, url: `/uploads/${fileName}`, size: fileSize });
+        sendJson(res, 200, await buildUploadPayload(fileName, filePath, fileSize));
       } catch (error) {
         try {
           if (existsSync(filePath)) {
@@ -319,6 +325,85 @@ const server = createServer(async (req, res) => {
         }
 
         sendJson(res, 500, { message: '上传失败: ' + (error instanceof Error ? error.message : '未知错误') });
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/admin/upload-chunk') {
+      if (!hasAdminAuth(req)) {
+        sendJson(res, 401, { message: '未授权，请输入正确后台密钥。' });
+        return;
+      }
+
+      const uploadId = safeUploadId(url.searchParams.get('uploadId'));
+      const index = Number(url.searchParams.get('index'));
+      const total = Number(url.searchParams.get('total'));
+
+      if (!uploadId || !Number.isInteger(index) || !Number.isInteger(total) || index < 0 || total < 1 || index >= total) {
+        sendJson(res, 400, { message: '分片参数无效。' });
+        return;
+      }
+
+      const partDir = join(uploadPartsDir, uploadId);
+      await mkdir(partDir, { recursive: true });
+      const partPath = join(partDir, `${String(index).padStart(6, '0')}.part`);
+      const writeStream = createWriteStream(partPath);
+
+      try {
+        await pipeline(req, writeStream);
+        sendJson(res, 200, { ok: true, uploadId, index, total });
+      } catch (error) {
+        sendJson(res, 500, { message: '分片上传失败: ' + (error instanceof Error ? error.message : '未知错误') });
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/admin/upload-complete') {
+      if (!hasAdminAuth(req)) {
+        sendJson(res, 401, { message: '未授权，请输入正确后台密钥。' });
+        return;
+      }
+
+      const uploadId = safeUploadId(url.searchParams.get('uploadId'));
+      const total = Number(url.searchParams.get('total'));
+
+      if (!uploadId || !Number.isInteger(total) || total < 1) {
+        sendJson(res, 400, { message: '合并参数无效。' });
+        return;
+      }
+
+      await mkdir(uploadsDir, { recursive: true });
+      const fileName = safeUploadName(url.searchParams.get('filename'));
+      const filePath = join(uploadsDir, fileName);
+      const partDir = join(uploadPartsDir, uploadId);
+
+      try {
+        await writeFile(filePath, '');
+        for (let index = 0; index < total; index += 1) {
+          const partPath = join(partDir, `${String(index).padStart(6, '0')}.part`);
+          const body = await readFile(partPath);
+          await appendFile(filePath, body);
+        }
+        await rm(partDir, { recursive: true, force: true });
+
+        const stats = await stat(filePath);
+        if (stats.size === 0) {
+          await unlink(filePath);
+          sendJson(res, 400, { message: '上传文件为空。' });
+          return;
+        }
+
+        sendJson(res, 200, await buildUploadPayload(fileName, filePath, stats.size));
+      } catch (error) {
+        try {
+          await rm(partDir, { recursive: true, force: true });
+          if (existsSync(filePath)) {
+            await unlink(filePath);
+          }
+        } catch (cleanupError) {
+          console.error('清理分片上传失败:', cleanupError);
+        }
+        sendJson(res, 500, { message: '合并上传文件失败: ' + (error instanceof Error ? error.message : '未知错误') });
       }
       return;
     }
